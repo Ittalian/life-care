@@ -35,6 +35,7 @@ function startEvent(data) {
       sendMessage(data, replyMessages, LINE_REPLY_ENDPOINT);
       sendMessageToSelf(selfReplyMessages, LINE_REPLY_SELF_ENDPOINT);
       setStartDate(careSheet);
+      setCycleDays(careSheet);
     } catch (e) {
       sendErrorMessage();
     }
@@ -44,7 +45,7 @@ function startEvent(data) {
 function endEvent(data) {
   const careSheet = fetchSheet();
   if (isLastRowFill(careSheet)) {
-    const replyMessages = getEndReplyMessages();
+    const replyMessages = getEndReplyMessages(careSheet);
     const selfReplyMessages = getEndSelfReplyMessages();
     try {
       sendMessage(data, replyMessages, LINE_REPLY_ENDPOINT);
@@ -86,12 +87,16 @@ function getStartSelfReplyMessages() {
   ];
 }
 
-function getEndReplyMessages() {
+function getEndReplyMessages(sheet) {
   const firstText = PropertiesService.getScriptProperties().getProperty('END_MESSAGE_TO_MOE');
+  const secondPrefixText = PropertiesService.getScriptProperties().getProperty('END_MESSAGE_PRE_DATE_TO_MOE');
+  const secondText = secondPrefixText + sheet.getRange(1, 4).getValue();
   const firstReplyMessage = textParams(firstText);
+  const secondReplyMessage = textParams(secondText);
 
   return replyMessages = [
     firstReplyMessage,
+    secondReplyMessage,
   ];
 }
 
@@ -106,13 +111,13 @@ function getEndSelfReplyMessages() {
 
 function isLastRowBlank(sheet) {
   const lastRow = sheet.getLastRow();
-  if (lastRow == 0) return false;
+  if (lastRow == 1) return false;
   return sheet.getRange(lastRow, 1).isBlank() || sheet.getRange(lastRow, 2).isBlank();
 }
 
 function isLastRowFill(sheet) {
   const lastRow = sheet.getLastRow();
-  if (lastRow == 0) return false;
+  if (lastRow == 1) return false;
   return !sheet.getRange(lastRow, 1).isBlank() && sheet.getRange(lastRow, 2).isBlank();
 }
 
@@ -128,6 +133,27 @@ function setEndDate(sheet) {
   const today = new Date();
   const dateParam = Utilities.formatDate(today, 'Asia/Tokyo', 'yyyy-MM-dd');
   sheet.getRange(lastRow, 2).setValue(dateParam);
+}
+
+function setCycleDays(sheet) {
+  const lastRow = sheet.getLastRow();
+  const cycleDays = getCycleDays(lastRow, sheet);
+
+  sheet.getRange(lastRow, 3).setValue(cycleDays);
+}
+
+function getCycleDays(lastRow, sheet) {
+  if (lastRow == 2) return 32;
+  const currentStartDate = sheet.getRange(lastRow, 1).getValue();
+  const lastEndDate = sheet.getRange(lastRow - 1, 2).getValue();
+
+  return getDaysBetween(lastEndDate, currentStartDate);
+}
+
+function getDaysBetween(startDate, endDate) {
+  var oneDay = 1000 * 60 * 60 * 24; // 1日のミリ秒数
+  var diffInMs = endDate.getTime() - startDate.getTime();
+  return Math.round(diffInMs / oneDay);
 }
 
 function sendMessage(data, messages, url) {
