@@ -51,6 +51,7 @@ function endEvent(data) {
       sendMessage(data, replyMessages, LINE_REPLY_ENDPOINT);
       sendMessageToSelf(selfReplyMessages, LINE_REPLY_SELF_ENDPOINT);
       setEndDate(careSheet);
+      setRange(careSheet);
     } catch (e) {
       sendErrorMessage();
     }
@@ -90,7 +91,7 @@ function getStartSelfReplyMessages() {
 function getEndReplyMessages(sheet) {
   const firstText = PropertiesService.getScriptProperties().getProperty('END_MESSAGE_TO_MOE');
   const secondPrefixText = PropertiesService.getScriptProperties().getProperty('END_MESSAGE_PRE_DATE_TO_MOE');
-  const secondText = secondPrefixText + sheet.getRange(1, 4).getValue();
+  const secondText = secondPrefixText + sheet.getRange(1, 5).getValue();
   const firstReplyMessage = textParams(firstText);
   const secondReplyMessage = textParams(secondText);
 
@@ -151,9 +152,23 @@ function getCycleDays(lastRow, sheet) {
 }
 
 function getDaysBetween(startDate, endDate) {
-  var oneDay = 1000 * 60 * 60 * 24; // 1日のミリ秒数
+  var oneDay = 1000 * 60 * 60 * 24;
   var diffInMs = endDate.getTime() - startDate.getTime();
   return Math.round(diffInMs / oneDay);
+}
+
+function setRange(sheet) {
+  const lastRow = sheet.getLastRow();
+  const range = getRange(lastRow, sheet);
+
+  sheet.getRange(lastRow, 4).setValue(range);
+}
+
+function getRange(lastRow, sheet) {
+  const startDate = sheet.getRange(lastRow, 1).getValue();
+  const endDate = sheet.getRange(lastRow, 2).getValue();
+
+  return getDaysBetween(startDate, endDate);
 }
 
 function sendMessage(data, messages, url) {
